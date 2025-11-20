@@ -30,15 +30,19 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // Middleware
+// In your server file
 app.use(
   cors({
     origin: [
       "https://youth-job-hub-platform.vercel.app",
-      "http://localhost:3000"
+      "http://localhost:3000",
+      "http://127.0.0.1:3000"
     ],
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   })
 );
 
