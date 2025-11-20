@@ -30,11 +30,18 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // Middleware
-app.use(cors({
-  origin: "https://youth-job-hub-platform.vercel.app,http://localhost:3000"
-  ,
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: [
+      "https://youth-job-hub-platform.vercel.app",
+      "http://localhost:3000"
+    ],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true
+  })
+);
+
 app.use(express.json());
 
 // Serve static files from uploads directory
