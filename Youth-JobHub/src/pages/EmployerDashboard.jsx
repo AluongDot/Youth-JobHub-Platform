@@ -165,7 +165,7 @@ function EmployerDashboard() {
     
     // Open documents in new tab
     application.documents.forEach(doc => {
-      const documentUrl = doc.url.startsWith('http') ? doc.url : `http://localhost:5000${doc.url}`;
+      const documentUrl = doc.url.startsWith('http') ? doc.url : `https://youth-jobhub-platform.onrender.com${doc.url}`;
       window.open(documentUrl, '_blank');
     });
   };

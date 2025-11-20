@@ -242,7 +242,7 @@ export const requestPasswordReset = async (req, res) => {
     console.log('✅ [DEBUG] User saved successfully with reset token');
 
     // Create reset URL with plain token
-    const resetURL = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
+    const resetURL = `${process.env.CLIENT_URL || 'https://youth-job-hub-platform.vercel.app'}/reset-password/${resetToken}`;
     
     console.log('📧 [BACKEND] Sending password reset email...');
 
