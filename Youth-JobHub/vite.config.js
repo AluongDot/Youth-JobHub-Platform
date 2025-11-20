@@ -6,7 +6,7 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [
     react(),
-    tailwindcss(), // Enable Tailwind 4.1
+    tailwindcss(),
   ],
   resolve: {
     alias: {
@@ -15,6 +15,23 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    open: true, // Auto open browser
+    open: true,
+    // Add proxy for development to avoid CORS issues
+    proxy: {
+      '/api': {
+        target: 'https://youth-jobhub-platform.onrender.com',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
   },
+  // Add build configuration for Vercel
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+  },
+  // Define environment variables
+  define: {
+    'process.env': {}
+  }
 })

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { apiClient } from "../services/api"; // Removed unused 'api' import
+import { apiClient } from "../services/api";
 
 const AuthContext = createContext(null);
 
@@ -16,7 +16,6 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Keep user in sync with localStorage in case other tabs change it
     const onStorage = (e) => {
       if (e.key === "userInfo") {
         try {
@@ -31,7 +30,6 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  // Helper function for error message extraction
   const extractErrorMessage = (err) => {
     let errorMessage = "Network error";
     const body = err.response?.data;
@@ -42,7 +40,6 @@ export const AuthProvider = ({ children }) => {
       } else if (body.message) {
         errorMessage = body.message;
       } else if (body.errors) {
-        // common shapes: array of { msg } or object of arrays
         if (Array.isArray(body.errors)) {
           errorMessage = body.errors.map((e) => e.msg || e).join("; ");
         } else if (typeof body.errors === "object") {
@@ -72,8 +69,17 @@ export const AuthProvider = ({ children }) => {
   const register = async (data) => {
     setLoading(true);
     try {
-      const res = await apiClient.post("/auth/register", data);
+      // Transform userType to role for backend
+      const backendData = {
+        ...data,
+        role: data.userType === 'employer' ? 'employer' : 'jobseeker'
+      };
+
+      console.log('🟡 [AUTH] Registering user:', backendData);
+      
+      const res = await apiClient.post("/auth/register", backendData);
       const result = res.data;
+      
       if (result.success) {
         if (result.token) {
           localStorage.setItem("token", result.token);

@@ -1,6 +1,11 @@
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://youth-jobhub-platform.onrender.com/api';
+// Use proxy in development, direct URL in production
+const BASE_URL = import.meta.env.DEV 
+  ? '/api' // This will use the Vite proxy
+  : (import.meta.env.VITE_API_BASE_URL || 'https://youth-jobhub-platform.onrender.com/api');
+
+console.log('🟡 [API] Base URL:', BASE_URL);
 
 // Create axios instance with better error handling
 const apiClient = axios.create({
@@ -8,7 +13,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json'
   },
-  timeout: 10000, // 10 second timeout
+  timeout: 15000, // 15 second timeout
 });
 
 // Request interceptor to add auth token
@@ -45,7 +50,8 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('userInfo');
-      window.location.href = '/login';
+      // Don't redirect automatically - let components handle it
+      console.log('🔐 [API] Authentication expired');
     }
     
     return Promise.reject(error);
@@ -140,26 +146,6 @@ export const applyForJob = async (jobId, applicationData) => {
   }
 };
 
-export const applyForJobWithDocuments = async (jobId, formData) => {
-  try {
-    console.log('🟡 [API] Applying for job with documents:', jobId);
-    const res = await apiClient.post(`/applications/${jobId}/apply`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-    console.log('✅ [API] Application with documents successful:', res.data);
-    return res.data;
-  } catch (error) {
-    console.error('❌ [API] Application with documents failed:', {
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message
-    });
-    throw error;
-  }
-};
-
 export const getUserApplications = async () => {
   try {
     const res = await apiClient.get('/applications/my-applications');
@@ -168,41 +154,6 @@ export const getUserApplications = async () => {
     console.error('❌ [API] Get user applications failed:', error);
     throw error;
   }
-};
-
-export const getMyApplications = async () => {
-  const res = await apiClient.get('/applications/my-applications');
-  return res.data.data || [];
-};
-
-export const getApplicationsByJob = async (jobId) => {
-  const res = await apiClient.get(`/applications/job/${jobId}`);
-  return res.data.data || [];
-};
-
-export const updateApplicationStatus = async (applicationId, status) => {
-  const res = await apiClient.put(`/applications/${applicationId}/status`, { status });
-  return res.data;
-};
-
-export const uploadApplicationDocuments = async (applicationId, formData) => {
-  const res = await apiClient.post(`/applications/${applicationId}/documents`, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  });
-  return res.data;
-};
-
-export const deleteDocument = async (applicationId, documentId) => {
-  const res = await apiClient.delete(`/applications/${applicationId}/documents/${documentId}`);
-  return res.data;
-};
-
-// User API
-export const updateProfile = async (userData) => {
-  const res = await apiClient.put('/users/profile', userData);
-  return res.data;
 };
 
 // Export all functions
@@ -223,16 +174,7 @@ export default {
   
   // Applications
   applyForJob,
-  applyForJobWithDocuments,
   getUserApplications,
-  getMyApplications,
-  getApplicationsByJob,
-  updateApplicationStatus,
-  uploadApplicationDocuments,
-  deleteDocument,
-  
-  // User
-  updateProfile,
   
   // Client
   apiClient
