@@ -13,7 +13,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json'
   },
-  timeout: 30000, // 15 second timeout
+  timeout: 30000, // 30 second timeout
 });
 
 // Request interceptor to add auth token
@@ -129,7 +129,51 @@ export const deleteJob = async (id) => {
   return res.data;
 };
 
-// Applications API
+// Applications API functions
+export const getApplicationsByJob = async (jobId) => {
+  try {
+    const res = await apiClient.get(`/applications/job/${jobId}`);
+    return res.data.applications || res.data.data || [];
+  } catch (error) {
+    console.error('❌ [API] Get applications by job failed:', error);
+    throw error;
+  }
+};
+
+export const updateApplicationStatus = async (appId, status) => {
+  try {
+    const res = await apiClient.patch(`/applications/${appId}/status`, { status });
+    return res.data;
+  } catch (error) {
+    console.error('❌ [API] Update application status failed:', error);
+    throw error;
+  }
+};
+
+export const uploadApplicationDocuments = async (appId, formData) => {
+  try {
+    const res = await apiClient.post(`/applications/${appId}/documents`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data;
+  } catch (error) {
+    console.error('❌ [API] Upload documents failed:', error);
+    throw error;
+  }
+};
+
+export const deleteDocument = async (appId, docId) => {
+  try {
+    const res = await apiClient.delete(`/applications/${appId}/documents/${docId}`);
+    return res.data;
+  } catch (error) {
+    console.error('❌ [API] Delete document failed:', error);
+    throw error;
+  }
+};
+
 export const applyForJob = async (jobId, applicationData) => {
   try {
     console.log('🟡 [API] Applying for job:', jobId);
@@ -175,6 +219,10 @@ export default {
   // Applications
   applyForJob,
   getUserApplications,
+  getApplicationsByJob,
+  updateApplicationStatus,
+  uploadApplicationDocuments,
+  deleteDocument,
   
   // Client
   apiClient
