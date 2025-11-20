@@ -1,20 +1,22 @@
 import axios from 'axios';
 
+// Use proxy in development, direct URL in production
 const BASE_URL = import.meta.env.DEV 
-  ? '/api'
+  ? '/api' // This will use the Vite proxy
   : (import.meta.env.VITE_API_BASE_URL || 'https://youth-jobhub-platform.onrender.com/api');
 
 console.log('🟡 [API] Base URL:', BASE_URL);
 
+// Create axios instance with better error handling
 const apiClient = axios.create({
   baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json'
   },
-  timeout: 30000,
+  timeout: 30000, // 15 second timeout
 });
 
-// Request interceptor
+// Request interceptor to add auth token
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -30,7 +32,7 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor
+// Response interceptor to handle errors
 apiClient.interceptors.response.use(
   (response) => {
     console.log(`✅ [API] ${response.config.method?.toUpperCase()} ${response.config.url} - Success`);
@@ -48,13 +50,15 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('userInfo');
+      // Don't redirect automatically - let components handle it
+      console.log('🔐 [API] Authentication expired');
     }
     
     return Promise.reject(error);
   }
 );
 
-// Helper to normalize job object
+// Helper to normalize job object from backend (_id -> id)
 const normalizeJob = (job) => ({
   id: job._id || job.id,
   title: job.title,
@@ -70,7 +74,7 @@ const normalizeJob = (job) => ({
   ...job,
 });
 
-// ==================== AUTH API ====================
+// Auth API functions
 export const requestPasswordReset = async (email) => {
   const res = await apiClient.post('/auth/forgot-password', { email });
   return res.data;
@@ -96,7 +100,7 @@ export const getCurrentUser = async () => {
   return res.data;
 };
 
-// ==================== JOBS API ====================
+// Jobs API
 export const getJobs = async (params = {}) => {
   const res = await apiClient.get('/jobs', { params });
   const data = res.data;
@@ -125,77 +129,19 @@ export const deleteJob = async (id) => {
   return res.data;
 };
 
-// ==================== APPLICATIONS API ====================
-// Fix: Add the missing functions that ApplicationsPage needs
-export const applyForJob = async (jobId, applicationData = {}) => {
+// Applications API
+export const applyForJob = async (jobId, applicationData) => {
   try {
     console.log('🟡 [API] Applying for job:', jobId);
-    
-    // Ensure applicationData has required fields
-    const payload = {
-      coverLetter: applicationData.coverLetter || '',
-      resume: applicationData.resume || '',
-      ...applicationData
-    };
-
-    const res = await apiClient.post(`/applications/apply/${jobId}`, payload);
+    const res = await apiClient.post(`/applications/apply/${jobId}`, applicationData);
     console.log('✅ [API] Application successful:', res.data);
     return res.data;
   } catch (error) {
-    console.error('❌ [API] Application failed:', error);
-    throw error;
-  }
-};
-
-// Fix: Add this missing function
-export const getApplicationsByJob = async (jobId) => {
-  try {
-    console.log('🟡 [API] Getting applications for job:', jobId);
-    const res = await apiClient.get(`/applications/job/${jobId}`);
-    return res.data.data || res.data.applications || [];
-  } catch (error) {
-    console.error('❌ [API] Get applications by job failed:', error);
-    // Return empty array instead of throwing to prevent app crashes
-    return [];
-  }
-};
-
-// Fix: Add this missing function
-export const updateApplicationStatus = async (applicationId, status) => {
-  try {
-    console.log('🟡 [API] Updating application status:', applicationId, status);
-    const res = await apiClient.put(`/applications/${applicationId}/status`, { status });
-    return res.data;
-  } catch (error) {
-    console.error('❌ [API] Update application status failed:', error);
-    throw error;
-  }
-};
-
-// Fix: Add this missing function
-export const uploadApplicationDocuments = async (applicationId, formData) => {
-  try {
-    console.log('🟡 [API] Uploading documents for application:', applicationId);
-    const res = await apiClient.post(`/applications/${applicationId}/documents`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
+    console.error('❌ [API] Application failed:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
     });
-    return res.data;
-  } catch (error) {
-    console.error('❌ [API] Upload documents failed:', error);
-    throw error;
-  }
-};
-
-// Fix: Add this missing function
-export const deleteDocument = async (applicationId, documentId) => {
-  try {
-    console.log('🟡 [API] Deleting document:', applicationId, documentId);
-    const res = await apiClient.delete(`/applications/${applicationId}/documents/${documentId}`);
-    return res.data;
-  } catch (error) {
-    console.error('❌ [API] Delete document failed:', error);
     throw error;
   }
 };
@@ -206,7 +152,7 @@ export const getUserApplications = async () => {
     return res.data.applications || res.data.data || [];
   } catch (error) {
     console.error('❌ [API] Get user applications failed:', error);
-    return [];
+    throw error;
   }
 };
 
@@ -228,10 +174,6 @@ export default {
   
   // Applications
   applyForJob,
-  getApplicationsByJob,
-  updateApplicationStatus,
-  uploadApplicationDocuments,
-  deleteDocument,
   getUserApplications,
   
   // Client
