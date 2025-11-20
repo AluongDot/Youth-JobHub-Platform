@@ -13,42 +13,26 @@ const ApplicationsPage = () => {
   const [uploadingId, setUploadingId] = useState(null)
 
   useEffect(() => {
-    if (!user) {
-      navigate('/login')
-      return
-    }
-    if (user.role !== 'employer') {
-      navigate('/dashboard')
-      return
-    }
+    if (!user) return navigate('/login')
+    if (user.role !== 'employer') return navigate('/dashboard')
     fetchApplications()
-  }, [user, navigate])
+  }, [user])
 
   const fetchApplications = async () => {
     try {
       setLoading(true)
-      setError('')
-      
-      // Get employer's jobs
       const { jobs } = await api.getJobs({ limit: 200 })
+
       const myJobs = jobs.filter(j => {
         return j.postedBy === user?._id || j.postedBy?.toString?.() === user?._id?.toString()
       })
 
-      // Get applications for each job
       const allApps = []
       for (const job of myJobs) {
         try {
           const apps = await api.getApplicationsByJob(job.id)
-          apps.forEach(a => {
-            allApps.push({ 
-              ...a, 
-              job,
-              // Ensure applicant data exists
-              applicant: a.applicant || { name: 'Unknown Applicant', email: 'N/A' },
-              documents: a.documents || [],
-              status: a.status || 'applied'
-            })
+          ;(apps || []).forEach(a => {
+            allApps.push({ ...a, job })
           })
         } catch (err) {
           console.error('Failed to fetch apps for job', job.id, err)
@@ -67,7 +51,7 @@ const ApplicationsPage = () => {
   const handleStatusChange = async (appId, status) => {
     try {
       await api.updateApplicationStatus(appId, status)
-      await fetchApplications() // Refresh the list
+      await fetchApplications()
     } catch (err) {
       console.error('Failed to update status', err)
       alert('Failed to update status')
@@ -86,7 +70,7 @@ const ApplicationsPage = () => {
       }
 
       await api.uploadApplicationDocuments(appId, formData)
-      await fetchApplications() // Refresh the list
+      await fetchApplications() // Refresh to show new documents
       
       alert('Documents uploaded successfully!')
     } catch (err) {
@@ -98,23 +82,14 @@ const ApplicationsPage = () => {
   }
 
   const handleViewDocument = (documentUrl) => {
-    // Handle both full URLs and relative paths
-    if (documentUrl.startsWith('http')) {
-      window.open(documentUrl, '_blank')
-    } else {
-      // For relative paths, construct full URL
-      const backendUrl = import.meta.env.DEV 
-        ? 'https://youth-jobhub-platform.onrender.com'
-        : (import.meta.env.VITE_API_BASE_URL || 'https://youth-jobhub-platform.onrender.com')
-      window.open(`${backendUrl}${documentUrl}`, '_blank')
-    }
+    window.open(`http://localhost:5000${documentUrl}`, '_blank')
   }
 
   const handleDeleteDocument = async (appId, docId) => {
     if (window.confirm('Are you sure you want to delete this document?')) {
       try {
         await api.deleteDocument(appId, docId)
-        await fetchApplications() // Refresh the list
+        await fetchApplications()
       } catch (err) {
         console.error('Delete failed', err)
         alert('Failed to delete document')
@@ -122,62 +97,43 @@ const ApplicationsPage = () => {
     }
   }
 
-  if (loading) return <Loader fullScreen text="Loading applications..." />
+  if (loading) return <Loader text="Loading applications..." />
   if (error) return <div className="text-center py-8 text-red-600">{error}</div>
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Applications</h1>
-        <Link to="/post-job" className="text-sm text-blue-600 hover:text-blue-800">
-          Post Job
-        </Link>
+        <Link to="/post-job" className="text-sm text-blue-600">Post Job</Link>
       </div>
 
       {applications.length === 0 ? (
-        <div className="bg-white p-6 rounded-lg shadow text-center text-gray-600">
+        <div className="bg-white p-6 rounded shadow text-center text-gray-600">
           No applications yet.
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded shadow overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Job
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Applicant
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Documents
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th className="px-6 py-3">Job</th>
+                <th className="px-6 py-3">Applicant</th>
+                <th className="px-6 py-3">Email</th>
+                <th className="px-6 py-3">Documents</th>
+                <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200">
               {applications.map(app => (
-                <tr key={app._id || app.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-medium text-gray-900">{app.job?.title}</div>
+                <tr key={app._id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <div className="font-medium">{app.job?.title}</div>
                     <div className="text-sm text-gray-600">{app.job?.company}</div>
                   </td>
 
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{app.applicant?.name || 'Anonymous'}</div>
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{app.applicant?.email || 'N/A'}</div>
-                  </td>
+                  <td className="px-6 py-4">{app.applicant?.name || 'Anonymous'}</td>
+                  <td className="px-6 py-4">{app.applicant?.email || 'N/A'}</td>
 
                   {/* Documents */}
                   <td className="px-6 py-4">
@@ -221,7 +177,7 @@ const ApplicationsPage = () => {
                     </div>
                   </td>
 
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
                     <span className={`px-2 py-1 rounded-full text-xs ${
                       app.status === 'hired' ? 'bg-green-100 text-green-800' :
                       app.status === 'rejected' ? 'bg-red-100 text-red-800' :
@@ -232,11 +188,11 @@ const ApplicationsPage = () => {
                     </span>
                   </td>
 
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
                     <select
                       value={app.status}
                       onChange={e => handleStatusChange(app._id, e.target.value)}
-                      className="px-2 py-1 border rounded text-sm"
+                      className="px-2 py-1 border rounded"
                     >
                       <option value="applied">Applied</option>
                       <option value="reviewing">Reviewing</option>
