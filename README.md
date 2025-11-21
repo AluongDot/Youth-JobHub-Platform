@@ -2,7 +2,7 @@
 
 A platform to connect young job seekers with employers — Youth JobHub is designed to help youth find employment opportunities and for companies to discover young talent.
 
----
+---https://youth-job-hub-platform.vercel.app/
 
 ## 🚀 Table of Contents
 
@@ -94,7 +94,7 @@ Make sure you have installed:
 
 ### Running Locally
 
-1. Set up your database and configure connection in backend.  
+1. Set up your database and configure the connection in the backend.  
 2. Start backend server:
 
     ```bash
@@ -164,7 +164,7 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 ## 📬 Contact
 
 - Created by **AluongDot**  
-- GitHub: [AluongDot](https://github.com/AluongDot)  
+- GitHub: [AluongDot]([https://github.com/AluongDot](https://github.com/AluongDot/Youth-JobHub-Platform.git))  
 - Email: *your-email@example.com* (adjust as needed)
 
 ---
