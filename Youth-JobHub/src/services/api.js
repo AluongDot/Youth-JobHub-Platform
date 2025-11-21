@@ -6,6 +6,7 @@ const BASE_URL = import.meta.env.DEV
   : (import.meta.env.VITE_API_BASE_URL || 'https://youth-jobhub-platform.onrender.com/api');
 
 console.log('🟡 [API] Base URL:', BASE_URL);
+console.log('🟡 [API] Environment:', import.meta.env.MODE);
 
 // Create axios instance with better error handling
 const apiClient = axios.create({
@@ -14,6 +15,7 @@ const apiClient = axios.create({
     'Content-Type': 'application/json'
   },
   timeout: 30000, // 30 second timeout
+  withCredentials: true
 });
 
 // Request interceptor to add auth token
@@ -23,7 +25,7 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    console.log(`🚀 [API] ${config.method?.toUpperCase()} ${config.url}`);
+    console.log(`🚀 [API] ${config.method?.toUpperCase()} ${config.url}`, config.params || '');
     return config;
   },
   (error) => {
@@ -39,19 +41,38 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error('❌ [API] Response error:', {
+    const errorDetails = {
       url: error.config?.url,
       method: error.config?.method,
       status: error.response?.status,
+      statusText: error.response?.statusText,
       message: error.message,
-      code: error.code
-    });
+      code: error.code,
+      data: error.response?.data
+    };
+    
+    console.error('❌ [API] Response error:', errorDetails);
+
+    // Handle specific error cases
+    if (error.code === 'ECONNABORTED') {
+      error.message = 'Request timeout. Please check your connection and try again.';
+    } else if (error.response?.status === 404) {
+      error.message = 'API endpoint not found. Please check the server configuration.';
+    } else if (error.response?.status === 500) {
+      error.message = 'Server error. Please try again later.';
+    } else if (!error.response) {
+      error.message = 'Network error. Please check your internet connection.';
+    }
 
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('userInfo');
-      // Don't redirect automatically - let components handle it
       console.log('🔐 [API] Authentication expired');
+      
+      // Redirect to login if not already there
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
     }
     
     return Promise.reject(error);
@@ -76,57 +97,115 @@ const normalizeJob = (job) => ({
 
 // Auth API functions
 export const requestPasswordReset = async (email) => {
-  const res = await apiClient.post('/auth/forgot-password', { email });
-  return res.data;
+  try {
+    const res = await apiClient.post('/auth/forgot-password', { email });
+    return res.data;
+  } catch (error) {
+    console.error('❌ [API] Password reset request failed:', error);
+    throw error;
+  }
 };
 
 export const resetPassword = async (token, password) => {
-  const res = await apiClient.post(`/auth/reset-password/${token}`, { password });
-  return res.data;
+  try {
+    const res = await apiClient.post(`/auth/reset-password/${token}`, { password });
+    return res.data;
+  } catch (error) {
+    console.error('❌ [API] Password reset failed:', error);
+    throw error;
+  }
 };
 
 export const login = async (credentials) => {
-  const res = await apiClient.post('/auth/login', credentials);
-  return res.data;
+  try {
+    const res = await apiClient.post('/auth/login', credentials);
+    return res.data;
+  } catch (error) {
+    console.error('❌ [API] Login failed:', error);
+    throw error;
+  }
 };
 
 export const register = async (userData) => {
-  const res = await apiClient.post('/auth/register', userData);
-  return res.data;
+  try {
+    console.log('🟡 [API] Registering user:', userData);
+    const res = await apiClient.post('/auth/register', userData);
+    console.log('✅ [API] Registration successful:', res.data);
+    return res.data;
+  } catch (error) {
+    console.error('❌ [API] Registration failed:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
+    throw error;
+  }
 };
 
 export const getCurrentUser = async () => {
-  const res = await apiClient.get('/auth/me');
-  return res.data;
+  try {
+    const res = await apiClient.get('/auth/me');
+    return res.data;
+  } catch (error) {
+    console.error('❌ [API] Get current user failed:', error);
+    throw error;
+  }
 };
 
 // Jobs API
 export const getJobs = async (params = {}) => {
-  const res = await apiClient.get('/jobs', { params });
-  const data = res.data;
-  const jobs = (data.data || data.jobs || []).map(normalizeJob);
-  const meta = data.meta || {};
-  return { jobs, meta };
+  try {
+    console.log('🟡 [API] Fetching jobs with params:', params);
+    const res = await apiClient.get('/jobs', { params });
+    const data = res.data;
+    const jobs = (data.data || data.jobs || data || []).map(normalizeJob);
+    const meta = data.meta || {};
+    console.log(`✅ [API] Retrieved ${jobs.length} jobs`);
+    return { jobs, meta };
+  } catch (error) {
+    console.error('❌ [API] Get jobs failed:', error);
+    throw error;
+  }
 };
 
 export const getJob = async (id) => {
-  const res = await apiClient.get(`/jobs/${id}`);
-  return normalizeJob(res.data);
+  try {
+    const res = await apiClient.get(`/jobs/${id}`);
+    return normalizeJob(res.data);
+  } catch (error) {
+    console.error('❌ [API] Get job failed:', error);
+    throw error;
+  }
 };
 
 export const createJob = async (jobData) => {
-  const res = await apiClient.post('/jobs', jobData);
-  return normalizeJob(res.data);
+  try {
+    const res = await apiClient.post('/jobs', jobData);
+    return normalizeJob(res.data);
+  } catch (error) {
+    console.error('❌ [API] Create job failed:', error);
+    throw error;
+  }
 };
 
 export const updateJob = async (id, jobData) => {
-  const res = await apiClient.put(`/jobs/${id}`, jobData);
-  return normalizeJob(res.data);
+  try {
+    const res = await apiClient.put(`/jobs/${id}`, jobData);
+    return normalizeJob(res.data);
+  } catch (error) {
+    console.error('❌ [API] Update job failed:', error);
+    throw error;
+  }
 };
 
 export const deleteJob = async (id) => {
-  const res = await apiClient.delete(`/jobs/${id}`);
-  return res.data;
+  try {
+    const res = await apiClient.delete(`/jobs/${id}`);
+    return res.data;
+  } catch (error) {
+    console.error('❌ [API] Delete job failed:', error);
+    throw error;
+  }
 };
 
 // Applications API functions
@@ -200,6 +279,17 @@ export const getUserApplications = async () => {
   }
 };
 
+// Test API connection
+export const testApiConnection = async () => {
+  try {
+    const res = await apiClient.get('/test');
+    return res.data;
+  } catch (error) {
+    console.error('❌ [API] Test connection failed:', error);
+    throw error;
+  }
+};
+
 // Export all functions
 export default {
   // Auth
@@ -223,6 +313,9 @@ export default {
   updateApplicationStatus,
   uploadApplicationDocuments,
   deleteDocument,
+  
+  // Test
+  testApiConnection,
   
   // Client
   apiClient
