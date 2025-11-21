@@ -1,276 +1,96 @@
-import axios from 'axios';
+// src/context/AuthContext.jsx
+import React, { createContext, useContext, useState, useEffect } from "react";
+import api from "../services/api"; 
 
-// Use proxy in development, direct URL in production
-const BASE_URL = import.meta.env.DEV 
-  ? '/api' // This will use the Vite proxy
-  : (import.meta.env.VITE_API_BASE_URL || 'https://youth-jobhub-platform.onrender.com/api');
+const AuthContext = createContext();
 
-console.log('🟡 [API] Base URL:', BASE_URL);
-console.log('🟡 [API] Environment:', import.meta.env.MODE);
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(
+    JSON.parse(localStorage.getItem("userInfo")) || null
+  );
+  const [loading, setLoading] = useState(true);
 
-// Create axios instance with better error handling
-const apiClient = axios.create({
-  baseURL: BASE_URL,
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  timeout: 30000, // 30 second timeout
-  withCredentials: true
-});
-
-// Request interceptor to add auth token
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    console.log(`🚀 [API] ${config.method?.toUpperCase()} ${config.url}`, config.params || '');
-    return config;
-  },
-  (error) => {
-    console.error('❌ [API] Request error:', error);
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor to handle errors
-apiClient.interceptors.response.use(
-  (response) => {
-    console.log(`✅ [API] ${response.config.method?.toUpperCase()} ${response.config.url} - Success`);
-    return response;
-  },
-  (error) => {
-    const errorDetails = {
-      url: error.config?.url,
-      method: error.config?.method,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      message: error.message,
-      code: error.code,
-      data: error.response?.data
-    };
-    
-    console.error('❌ [API] Response error:', errorDetails);
-
-    // Handle specific error cases
-    if (error.code === 'ECONNABORTED') {
-      error.message = 'Request timeout. Please check your connection and try again.';
-    } else if (error.response?.status === 404) {
-      error.message = 'API endpoint not found. Please check the server configuration.';
-    } else if (error.response?.status === 500) {
-      error.message = 'Server error. Please try again later.';
-    } else if (!error.response) {
-      error.message = 'Network error. Please check your internet connection.';
-    }
-
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('userInfo');
-      console.log('🔐 [API] Authentication expired');
-      
-      // Redirect to login if not already there
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
+  // Load current user on app start
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await api.getCurrentUser();
+        setUser(res.user || res);
+        localStorage.setItem("userInfo", JSON.stringify(res.user || res));
+      } catch {
+        setUser(null);
+        localStorage.removeItem("userInfo");
+      } finally {
+        setLoading(false);
       }
+    };
+
+    const token = localStorage.getItem("token");
+    if (token) fetchUser();
+    else setLoading(false);
+  }, []);
+
+  // Login function
+  const login = async (credentials) => {
+    const res = await api.login(credentials);
+
+    if (res.token) {
+      localStorage.setItem("token", res.token);
     }
-    
-    return Promise.reject(error);
-  }
-);
+    if (res.user) {
+      localStorage.setItem("userInfo", JSON.stringify(res.user));
+      setUser(res.user);
+    }
 
-// Helper to normalize job object from backend (_id -> id)
-const normalizeJob = (job) => ({
-  id: job._id || job.id,
-  title: job.title,
-  company: job.company,
-  location: job.location,
-  type: job.type,
-  salary: job.salary,
-  description: job.description,
-  requirements: job.requirements,
-  featuredImage: job.featuredImage,
-  createdAt: job.createdAt || job.datePosted,
-  applications: job.applications || 0,
-  ...job,
-});
+    return res;
+  };
 
-// Auth API functions
-export const requestPasswordReset = async (email) => {
-  try {
-    const res = await apiClient.post('/auth/forgot-password', { email });
-    return res.data;
-  } catch (error) {
-    console.error('❌ [API] Password reset request failed:', error);
-    throw error;
-  }
+  // Register function
+  const register = async (userData) => {
+    const res = await api.register(userData);
+
+    if (res.token) {
+      localStorage.setItem("token", res.token);
+    }
+    if (res.user) {
+      localStorage.setItem("userInfo", JSON.stringify(res.user));
+      setUser(res.user);
+    }
+
+    return res;
+  };
+
+  // Logout function
+  const logout = async () => {
+    try {
+      await api.logout();
+    } catch (e) {
+      console.log("Logout error ignored:", e);
+    }
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("userInfo");
+    setUser(null);
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        register,
+        logout,
+        loading,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
-export const resetPassword = async (token, password) => {
-  try {
-    const res = await apiClient.post(`/auth/reset-password/${token}`, { password });
-    return res.data;
-  } catch (error) {
-    console.error('❌ [API] Password reset failed:', error);
-    throw error;
-  }
-};
+// ---------------------------
+// ✅ Exported Hook (REQUIRED)
+// ---------------------------
+export const useAuth = () => useContext(AuthContext);
 
-export const login = async (credentials) => {
-  try {
-    const res = await apiClient.post('/auth/login', credentials);
-    return res.data;
-  } catch (error) {
-    console.error('❌ [API] Login failed:', error);
-    throw error;
-  }
-};
-
-export const register = async (userData) => {
-  try {
-    console.log('🟡 [API] Registering user:', userData);
-    const res = await apiClient.post('/auth/register', userData);
-    console.log('✅ [API] Registration successful:', res.data);
-    return res.data;
-  } catch (error) {
-    console.error('❌ [API] Registration failed:', {
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message
-    });
-    throw error;
-  }
-};
-
-export const getCurrentUser = async () => {
-  try {
-    const res = await apiClient.get('/auth/me');
-    return res.data;
-  } catch (error) {
-    console.error('❌ [API] Get current user failed:', error);
-    throw error;
-  }
-};
-
-// Jobs API
-export const getJobs = async (params = {}) => {
-  try {
-    console.log('🟡 [API] Fetching jobs with params:', params);
-    const res = await apiClient.get('/jobs', { params });
-    const data = res.data;
-    const jobs = (data.data || data.jobs || data || []).map(normalizeJob);
-    const meta = data.meta || {};
-    console.log(`✅ [API] Retrieved ${jobs.length} jobs`);
-    return { jobs, meta };
-  } catch (error) {
-    console.error('❌ [API] Get jobs failed:', error);
-    throw error;
-  }
-};
-
-export const getJob = async (id) => {
-  try {
-    const res = await apiClient.get(`/jobs/${id}`);
-    return normalizeJob(res.data);
-  } catch (error) {
-    console.error('❌ [API] Get job failed:', error);
-    throw error;
-  }
-};
-
-export const createJob = async (jobData) => {
-  try {
-    const res = await apiClient.post('/jobs', jobData);
-    return normalizeJob(res.data);
-  } catch (error) {
-    console.error('❌ [API] Create job failed:', error);
-    throw error;
-  }
-};
-
-export const updateJob = async (id, jobData) => {
-  try {
-    const res = await apiClient.put(`/jobs/${id}`, jobData);
-    return normalizeJob(res.data);
-  } catch (error) {
-    console.error('❌ [API] Update job failed:', error);
-    throw error;
-  }
-};
-
-export const deleteJob = async (id) => {
-  try {
-    const res = await apiClient.delete(`/jobs/${id}`);
-    return res.data;
-  } catch (error) {
-    console.error('❌ [API] Delete job failed:', error);
-    throw error;
-  }
-};
-
-// Applications API
-export const applyForJob = async (jobId, applicationData) => {
-  try {
-    console.log('🟡 [API] Applying for job:', jobId);
-    const res = await apiClient.post(`/applications/apply/${jobId}`, applicationData);
-    console.log('✅ [API] Application successful:', res.data);
-    return res.data;
-  } catch (error) {
-    console.error('❌ [API] Application failed:', {
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message
-    });
-    throw error;
-  }
-};
-
-export const getUserApplications = async () => {
-  try {
-    const res = await apiClient.get('/applications/my-applications');
-    return res.data.applications || res.data.data || [];
-  } catch (error) {
-    console.error('❌ [API] Get user applications failed:', error);
-    throw error;
-  }
-};
-
-// Test API connection
-export const testApiConnection = async () => {
-  try {
-    const res = await apiClient.get('/test');
-    return res.data;
-  } catch (error) {
-    console.error('❌ [API] Test connection failed:', error);
-    throw error;
-  }
-};
-
-// Export all functions
-export default {
-  // Auth
-  requestPasswordReset,
-  resetPassword,
-  login,
-  register,
-  getCurrentUser,
-  
-  // Jobs
-  getJobs,
-  getJob,
-  createJob,
-  updateJob,
-  deleteJob,
-  
-  // Applications
-  applyForJob,
-  getUserApplications,
-  
-  // Test
-  testApiConnection,
-  
-  // Client
-  apiClient
-};
-
-export { apiClient };
+export default AuthContext;

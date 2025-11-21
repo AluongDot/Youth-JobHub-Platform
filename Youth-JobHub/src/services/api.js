@@ -152,6 +152,16 @@ export const getCurrentUser = async () => {
   }
 };
 
+export const logout = async () => {
+  try {
+    const res = await apiClient.post('/auth/logout');
+    return res.data;
+  } catch (error) {
+    console.error('❌ [API] Logout failed:', error);
+    throw error;
+  }
+};
+
 // Jobs API
 export const getJobs = async (params = {}) => {
   try {
@@ -298,6 +308,7 @@ export default {
   login,
   register,
   getCurrentUser,
+  logout,
   
   // Jobs
   getJobs,
