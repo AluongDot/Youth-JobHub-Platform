@@ -6,14 +6,16 @@ import {
   getApplicationsByJob,
   updateApplicationStatus,
   deleteDocument,
-  getApplicationById
+  getApplicationById,
+  withdrawApplication,
+  getApplicationStats // Add missing import
 } from '../controllers/applicationController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import upload from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
 
-// Apply for a job with file upload support
+// FIXED: Consistent route structure
 router.post('/:jobId/apply', protect, upload.array('documents', 5), applyForJob);
 
 // Get current user's applications
@@ -31,7 +33,13 @@ router.delete('/:applicationId/documents/:documentId', protect, deleteDocument);
 // Get applications for a specific job (employer only)
 router.get('/job/:jobId', protect, getApplicationsByJob);
 
-// Update application status (employer only)
+// Update application status (employer only) - FIXED: consistent PUT method
 router.put('/:applicationId/status', protect, updateApplicationStatus);
+
+// ADD: Withdraw application
+router.delete('/:applicationId/withdraw', protect, withdrawApplication);
+
+// ADD: Application statistics
+router.get('/stats/overview', protect, getApplicationStats);
 
 export default router;

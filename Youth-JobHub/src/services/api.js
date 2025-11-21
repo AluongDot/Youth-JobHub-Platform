@@ -91,17 +91,23 @@ export const updateJob = async (id, data) => normalizeJob((await apiClient.put(`
 export const deleteJob = async (id) => (await apiClient.delete(`/jobs/${id}`)).data;
 
 // ------------------- APPLICATIONS -------------------
-export const applyForJob = async (jobId, data) =>
-  (await apiClient.post(`/applications/apply/${jobId}`, data)).data;
+// FIXED: Corrected endpoint structure for consistency
+export const applyForJob = async (jobId, formData) => {
+  const response = await apiClient.post(`/applications/${jobId}/apply`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data;
+};
+
+// FIXED: Changed to PUT to match backend and corrected endpoint
+export const updateApplicationStatus = async (appId, status) =>
+  (await apiClient.put(`/applications/${appId}/status`, { status })).data;
 
 export const getUserApplications = async () =>
   (await apiClient.get("/applications/my-applications")).data.applications;
 
 export const getApplicationsByJob = async (jobId) =>
   (await apiClient.get(`/applications/job/${jobId}`)).data.applications;
-
-export const updateApplicationStatus = async (appId, status) =>
-  (await apiClient.patch(`/applications/${appId}/status`, { status })).data;
 
 export const uploadApplicationDocuments = async (appId, formData) =>
   (await apiClient.post(`/applications/${appId}/documents`, formData, {
