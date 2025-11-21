@@ -1,6 +1,6 @@
 // src/context/AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect } from "react";
-import api from "../services/api"; 
+import api from "../services/api";
 
 const AuthContext = createContext();
 
@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }) => {
     else setLoading(false);
   }, []);
 
-  // Login function
+  // Login
   const login = async (credentials) => {
     const res = await api.login(credentials);
 
@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }) => {
     return res;
   };
 
-  // Register function
+  // Register
   const register = async (userData) => {
     const res = await api.register(userData);
 
@@ -60,7 +60,7 @@ export const AuthProvider = ({ children }) => {
     return res;
   };
 
-  // Logout function
+  // Logout
   const logout = async () => {
     try {
       await api.logout();
@@ -88,9 +88,8 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// ---------------------------
-// ✅ Exported Hook (REQUIRED)
-// ---------------------------
+// Hook must be exported correctly
 export const useAuth = () => useContext(AuthContext);
 
+// Default export
 export default AuthContext;
