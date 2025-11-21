@@ -18,14 +18,28 @@ const ApplicationsPage = () => {
     fetchApplications();
   }, [user]);
 
+  // ✅ Fixed fetchApplications
   const fetchApplications = async () => {
+    // Safety check: ensure API functions exist
+    if (typeof api.getJobs !== 'function') {
+      console.error('api.getJobs is not defined');
+      setError('API function missing');
+      setLoading(false);
+      return;
+    }
+    if (typeof api.getApplicationsByJob !== 'function') {
+      console.error('api.getApplicationsByJob is not defined');
+      setError('API function missing');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const { jobs } = await api.getJobs({ limit: 200 });
 
-      const myJobs = jobs.filter(j => 
-        j.postedBy === user?._id ||
-        j.postedBy?.toString?.() === user?._id?.toString()
+      const myJobs = jobs.filter(
+        j => j.postedBy === user?._id || j.postedBy?.toString?.() === user?._id?.toString()
       );
 
       const allApps = [];

@@ -42,7 +42,7 @@ apiClient.interceptors.response.use(
       message: error.message,
     };
 
-    console.error("❌ [API] Response error:", err);
+    console.error(" [API] Response error:", err);
 
     if (error.response?.status === 401) {
       localStorage.removeItem("token");
